@@ -1,0 +1,290 @@
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
+
+// Customer structure to hold personal data and associated account numbers
+struct Customer {
+    string name, birthDate, ID, gender, phone1, phone2, email, address, country, city, zipCode;
+    vector<int> accounts; // List of account numbers linked to the customer
+
+    // Function to display all customer details
+    void showDetails() const {
+        cout << "Name: " << name << endl;
+        cout << "Birth Date: " << birthDate << endl;
+        cout << "ID: " << ID << endl;
+        cout << "Gender: " << gender << endl;
+        cout << "Phone1: " << phone1 << endl;
+        cout << "Phone2: " << phone2 << endl;
+        cout << "Email: " << email << endl;
+        cout << "Address: " << address << ", " << city << ", " << country << " - " << zipCode << endl;
+        cout << "Accounts: ";
+        for (int i = 0; i < accounts.size(); i++)
+            cout << accounts[i] << " ";
+        cout << endl;
+    }
+};
+
+// Account structure to store banking details
+struct Account {
+    int accountNumber;
+    string bankName, IBAN, bankBranch, accountType, reasonForCreation;
+    double balance, dailyLimit;
+    stack<double> transactionHistory; // Stack for undo feature (stores transactions)
+
+    // Function to display account information
+    void showDetails() const {
+        cout << "Account Num: " << accountNumber << endl;
+        cout << "Bank Name: " << bankName << endl;
+        cout << "IBAN: " << IBAN << endl;
+        cout << "Branch: " << bankBranch << endl;
+        cout << "Type: " << accountType << endl;
+        cout << "Balance: " << balance << endl;
+        cout << "Daily Limit: " << dailyLimit << endl;
+        cout << "Reason: " << reasonForCreation << endl;
+    }
+};
+
+// Global lists for storing all customers and accounts
+vector<Customer> customers;
+vector<Account> accounts;
+
+// Add a new customer to the system
+void addCustomer() {
+    Customer c;
+    cin.ignore();
+    cout << "Enter name: "; getline(cin, c.name);
+    cout << "Enter birth date: "; getline(cin, c.birthDate);
+    cout << "Enter ID: "; getline(cin, c.ID);
+    cout << "Enter gender: "; getline(cin, c.gender);
+    cout << "Enter phone1: "; getline(cin, c.phone1);
+    cout << "Enter phone2: "; getline(cin, c.phone2);
+    cout << "Enter email: "; getline(cin, c.email);
+    cout << "Enter address: "; getline(cin, c.address);
+    cout << "Enter city: "; getline(cin, c.city);
+    cout << "Enter country: "; getline(cin, c.country);
+    cout << "Enter ZIP code: "; getline(cin, c.zipCode);
+    customers.push_back(c);
+    cout << "Customer added successfully!\n";
+}
+
+// Add a new bank account and link it to a customer
+void addAccount() {
+    Account a;
+
+    // Get account number and check if it's unique
+    cout << "Enter account number: ";
+    if (!(cin >> a.accountNumber)) {
+        cout << "Invalid input! Please enter a valid number.\n";
+        cin.clear(); cin.ignore(1000, '\n');
+        return;
+    }
+
+    for (int i = 0; i < accounts.size(); i++) {
+        if (accounts[i].accountNumber == a.accountNumber) {
+            cout << "Account number already exists! Try another.\n";
+            return;
+        }
+    }
+
+    // Read remaining account details
+    cin.ignore();
+    cout << "Enter bank name: "; getline(cin, a.bankName);
+    cout << "Enter IBAN: "; getline(cin, a.IBAN);
+    cout << "Enter branch: "; getline(cin, a.bankBranch);
+    cout << "Enter type: "; getline(cin, a.accountType);
+    cout << "Enter balance: ";
+    if (!(cin >> a.balance)) {
+        cout << "Invalid balance input.\n";
+        cin.clear(); cin.ignore(1000, '\n'); return;
+    }
+
+    cout << "Enter daily limit: ";
+    if (!(cin >> a.dailyLimit)) {
+        cout << "Invalid limit input.\n";
+        cin.clear(); cin.ignore(1000, '\n'); return;
+    }
+
+    cin.ignore();
+    cout << "Enter reason for creation: "; getline(cin, a.reasonForCreation);
+
+    // Choose a customer to link this account
+    if (customers.empty()) {
+        cout << "No customers available. Please add a customer first.\n";
+        return;
+    }
+
+    cout << "\n--- Choose a Customer to Link this Account ---\n";
+    for (int i = 0; i < customers.size(); i++) {
+        cout << i + 1 << ". " << customers[i].name << " (ID: " << customers[i].ID << ")\n";
+    }
+
+    int choice;
+    cout << "Enter customer number: ";
+    cin >> choice;
+
+    if (choice < 1 || choice > customers.size()) {
+        cout << "Invalid choice.\n";
+        return;
+    }
+
+    // Link account to the selected customer
+    customers[choice - 1].accounts.push_back(a.accountNumber);
+    accounts.push_back(a);
+    cout << "Account added and linked to " << customers[choice - 1].name << " successfully!\n";
+}
+
+// Display all customers
+void showCustomerList() {
+    cout << "\n--- Customer List ---\n";
+    for (int i = 0; i < customers.size(); i++) {
+        cout << "Customer " << i + 1 << ":\n";
+        customers[i].showDetails();
+        cout << "--------------------------\n";
+    }
+}
+
+// Display all accounts
+void showAccountList() {
+    cout << "\n--- Account List ---\n";
+    for (int i = 0; i < accounts.size(); i++) {
+        cout << "Account " << i + 1 << ":\n";
+        accounts[i].showDetails();
+        cout << "--------------------------\n";
+    }
+}
+
+// Record a deposit or withdrawal
+void recordTransaction() {
+    int accountNumber;
+    double amount;
+
+    cout << "Enter account number: ";
+    cin >> accountNumber;
+
+    for (int i = 0; i < accounts.size(); i++) {
+        if (accounts[i].accountNumber == accountNumber) {
+            cout << "Enter transaction amount (positive for deposit, negative for withdrawal): ";
+            cin >> amount;
+
+            if (amount < 0 && accounts[i].balance + amount < 0) {
+                cout << "Insufficient balance! Current balance: " << accounts[i].balance << endl;
+                return;
+            }
+
+            // Save the transaction in stack for undo
+            accounts[i].transactionHistory.push(amount);
+            accounts[i].balance += amount;
+
+            cout << "Transaction recorded successfully! New balance: " << accounts[i].balance << endl;
+            return;
+        }
+    }
+
+    cout << "Account not found!\n";
+}
+
+// Undo the last transaction using the stack
+void undoLastTransaction() {
+    int accountNumber;
+    cout << "Enter account number to undo last transaction: ";
+    cin >> accountNumber;
+
+    for (int i = 0; i < accounts.size(); i++) {
+        if (accounts[i].accountNumber == accountNumber) {
+            if (!accounts[i].transactionHistory.empty()) {
+                double last = accounts[i].transactionHistory.top();
+                accounts[i].transactionHistory.pop();
+                accounts[i].balance -= last;
+                cout << "Last transaction undone. New balance: " << accounts[i].balance << endl;
+            } else {
+                cout << "No transactions to undo for this account.\n";
+            }
+            return;
+        }
+    }
+
+    cout << "Account not found!\n";
+}
+
+// Show all accounts linked to a specific customer
+void showAccountsForCustomer() {
+    if (customers.empty()) {
+        cout << "No customers available.\n";
+        return;
+    }
+
+    cout << "\n--- Choose a Customer to View Their Accounts ---\n";
+    for (int i = 0; i < customers.size(); i++) {
+        cout << i + 1 << ". " << customers[i].name << " (ID: " << customers[i].ID << ")\n";
+    }
+
+    int choice;
+    cout << "Enter customer number: ";
+    cin >> choice;
+
+    if (choice < 1 || choice > customers.size()) {
+        cout << "Invalid choice.\n";
+        return;
+    }
+
+    Customer selected = customers[choice - 1];
+
+    if (selected.accounts.empty()) {
+        cout << "This customer has no linked accounts.\n";
+        return;
+    }
+
+    cout << "\n--- Accounts for " << selected.name << " ---\n";
+
+    for (int i = 0; i < selected.accounts.size(); i++) {
+        int accNum = selected.accounts[i];
+        bool found = false;
+
+        // Find and show each linked account
+        for (int j = 0; j < accounts.size(); j++) {
+            if (accounts[j].accountNumber == accNum) {
+                accounts[j].showDetails();
+                cout << "---------------------------\n";
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            cout << "Account number " << accNum << " not found in system.\n";
+        }
+    }
+}
+
+int main() {
+    int choice;
+    do {
+        cout << "\n--- Bank Management System ---\n";
+        cout << "1. Add Customer\n";
+        cout << "2. Add Account\n";
+        cout << "3. Show Customer List\n";
+        cout << "4. Show Account List\n";
+        cout << "5. Record Transaction\n";
+        cout << "6. Undo Last Transaction\n";
+        cout << "7. Show Accounts for a Customer\n";
+        cout << "8. Exit\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+
+        // Execute user choice
+        switch (choice) {
+            case 1: addCustomer(); break;
+            case 2: addAccount(); break;
+            case 3: showCustomerList(); break;
+            case 4: showAccountList(); break;
+            case 5: recordTransaction(); break;
+            case 6: undoLastTransaction(); break;
+            case 7: showAccountsForCustomer(); break;
+            case 8: cout << "Exiting...\n"; break;
+            default: cout << "Invalid choice! Please try again.\n";
+        }
+    } while (choice != 8);
+
+    return 0;
+}
